@@ -42,9 +42,9 @@ class OrderSystemBloc extends Bloc<OrderSystemEvent, OrderSystemState> {
     AddBotEvent event,
     Emitter<OrderSystemState> emitter,
   ) async {
-    final int newCounter = state.botNoCounter + 1;
-    final List<Bot> botList = state.botList;
-    final Bot newBot = Bot(botNo: newCounter);
+    int newCounter = state.botNoCounter + 1;
+    List<Bot> botList = [...state.botList];
+    Bot newBot = Bot(botNo: newCounter);
     botList.add(newBot);
 
     emitter(
@@ -65,10 +65,10 @@ class OrderSystemBloc extends Bloc<OrderSystemEvent, OrderSystemState> {
     RemoveBotEvent event,
     Emitter<OrderSystemState> emitter,
   ) async {
-    final List<Bot> botList = state.botList;
+    List<Bot> botList = [...state.botList];
 
     if (botList.isNotEmpty) {
-      final Bot lastBot = botList.last;
+      Bot lastBot = botList.last;
 
       add(
         BotStopAndPendingOrderEvent(
@@ -90,20 +90,23 @@ class OrderSystemBloc extends Bloc<OrderSystemEvent, OrderSystemState> {
     AddVipOrderEvent event,
     Emitter<OrderSystemState> emitter,
   ) async {
-    final int newCounter = state.orderNoCounter + 1;
-    final List<Order> orderList = state.vipOrderList;
-    final List<Bot> botList = state.botList;
+    int newCounter = state.orderNoCounter + 1;
+    List<Order> orderList = [...state.pendingOrderList];
+    List<Bot> botList = [...state.botList];
+    Order newOrder = Order(orderNo: newCounter, isVip: true);
 
-    final Order newOrder = Order(orderNo: newCounter, isVip: true);
-    final Bot? availableBot = botList.firstWhereOrNull((item) => item.currentProcessingOrder == null);
-    orderList.add(newOrder);
+    // -1 means there is no VIP order, then will add in index 0 (-1 + 1)
+    int lastVip = orderList.lastIndexWhere((item) => item.isVip);
+    orderList.insert(lastVip + 1, newOrder);
 
     emitter(
       state.copyWith(
         orderNoCounter: newCounter,
-        vipOrderList: orderList,
+        pendingOrderList: orderList,
       ),
     );
+
+    Bot? availableBot = botList.firstWhereOrNull((item) => item.currentProcessingOrder == null);
 
     if (availableBot != null) {
       add(
@@ -118,20 +121,22 @@ class OrderSystemBloc extends Bloc<OrderSystemEvent, OrderSystemState> {
     AddNormalOrderEvent event,
     Emitter<OrderSystemState> emitter,
   ) async {
-    final int newCounter = state.orderNoCounter + 1;
-    final List<Order> orderList = state.normalOrderList;
-    final List<Bot> botList = state.botList;
+    int newCounter = state.orderNoCounter + 1;
+    List<Order> orderList = [...state.pendingOrderList];
+    List<Bot> botList = [...state.botList];
+    Order newOrder = Order(orderNo: newCounter, isVip: false);
 
-    final Order newOrder = Order(orderNo: newCounter, isVip: false);
-    final Bot? availableBot = botList.firstWhereOrNull((item) => item.currentProcessingOrder == null);
-    orderList.add(newOrder);
+    // Will add into last index no matter what
+    orderList.insert(orderList.length, newOrder);
 
     emitter(
       state.copyWith(
         orderNoCounter: newCounter,
-        normalOrderList: orderList,
+        pendingOrderList: orderList,
       ),
     );
+
+    Bot? availableBot = botList.firstWhereOrNull((item) => item.currentProcessingOrder == null);
 
     if (availableBot != null) {
       add(
@@ -146,77 +151,69 @@ class OrderSystemBloc extends Bloc<OrderSystemEvent, OrderSystemState> {
     BotStartOrderEvent event,
     Emitter<OrderSystemState> emitter,
   ) async {
-    final vipOrderList = state.vipOrderList;
-    final normalOrderList = state.normalOrderList;
-    final Bot currentBot = event.currentBot;
+    Bot currentBot = event.currentBot;
+    List<Order> pendingOrderList = [...state.pendingOrderList];
+    Order? availablePendingOrder = pendingOrderList.firstWhereOrNull((item) => item.isPending());
 
-    final Order? availableVipOrder = vipOrderList.firstWhereOrNull((item) => item.isPending());
-    final Order? availableNormalOrder = normalOrderList.firstWhereOrNull((item) => item.isPending());
-
-    if (availableVipOrder != null) {
-      availableVipOrder.setStatusProcessing();
-      currentBot.currentProcessingOrder = availableVipOrder;
-    } else if (availableNormalOrder != null) {
-      availableNormalOrder.setStatusProcessing();
-      currentBot.currentProcessingOrder = availableNormalOrder;
+    if (availablePendingOrder != null) {
+      availablePendingOrder.setStatusProcessing();
+      currentBot.currentProcessingOrder = availablePendingOrder;
     }
 
-    emitter(state);
+    emitter(
+      state.copyWith(
+        pendingOrderList: pendingOrderList,
+      ),
+    );
   }
 
   _onBotCompleteOrderEvent(
     BotCompleteOrderEvent event,
     Emitter<OrderSystemState> emitter,
   ) async {
-    final List<Order> vipList = state.vipOrderList;
-    final List<Order> normalList = state.normalOrderList;
-    final List<Order> completeList = state.completeOrderList;
-    final Bot currentBot = event.currentBot;
+    Bot currentBot = event.currentBot;
+    List<Order> pendingOrderList = [...state.pendingOrderList];
+    List<Order> completeList = [...state.completeOrderList];
 
     if (currentBot.currentProcessingOrder != null) {
-      final Order completedOrder = currentBot.currentProcessingOrder!;
+      Order completedOrder = currentBot.currentProcessingOrder!;
       currentBot.currentProcessingOrder = null;
-      completeList.add(completedOrder);
 
-      if (completedOrder.isVip) {
-        vipList.removeWhere((item) => item.orderNo == completedOrder.orderNo);
-      } else {
-        normalList.removeWhere((item) => item.orderNo == completedOrder.orderNo);
-      }
+      pendingOrderList.removeWhere((item) => item.orderNo == completedOrder.orderNo);
+      completeList.add(completedOrder);
     }
 
     emitter(
       state.copyWith(
-        vipOrderList: vipList,
-        normalOrderList: normalList,
+        pendingOrderList: pendingOrderList,
         completeOrderList: completeList,
       ),
     );
+
+    if (currentBot.currentProcessingOrder == null) {
+      add(
+        BotStartOrderEvent(
+          currentBot: currentBot,
+        ),
+      );
+    }
   }
 
   _onBotStopAndPendingOrderEvent(
     BotStopAndPendingOrderEvent event,
     Emitter<OrderSystemState> emitter,
   ) async {
-    final List<Order> vipList = state.vipOrderList;
-    final List<Order> normalList = state.normalOrderList;
-    final Bot currentBot = event.currentBot;
+    List<Order> pendingOrderList = [...state.pendingOrderList];
+    Bot currentBot = event.currentBot;
 
     if (currentBot.currentProcessingOrder != null) {
-      final Order currentOrder = currentBot.currentProcessingOrder!;
+      Order currentOrder = currentBot.currentProcessingOrder!;
       currentOrder.setStatusPending();
       currentBot.currentProcessingOrder = null;
 
-      if (currentOrder.isVip) {
-        vipList.insert(0, currentOrder);
-      } else {
-        normalList.insert(0, currentOrder);
-      }
-
       emitter(
         state.copyWith(
-          vipOrderList: vipList,
-          normalOrderList: normalList,
+          pendingOrderList: pendingOrderList,
         ),
       );
     }

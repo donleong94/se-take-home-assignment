@@ -5,32 +5,28 @@ class OrderSystemState extends Equatable {
     this.botNoCounter = 0,
     this.orderNoCounter = 0,
     this.botList = const [],
-    this.vipOrderList = const [],
-    this.normalOrderList = const [],
+    this.pendingOrderList = const [],
     this.completeOrderList = const [],
   });
 
   final int botNoCounter;
   final int orderNoCounter;
   final List<Bot> botList;
-  final List<Order> vipOrderList;
-  final List<Order> normalOrderList;
+  final List<Order> pendingOrderList;
   final List<Order> completeOrderList;
 
   OrderSystemState copyWith({
     int? botNoCounter,
     int? orderNoCounter,
     List<Bot>? botList,
-    List<Order>? vipOrderList,
-    List<Order>? normalOrderList,
+    List<Order>? pendingOrderList,
     List<Order>? completeOrderList,
   }) {
     return OrderSystemState(
       botNoCounter: botNoCounter ?? this.botNoCounter,
       orderNoCounter: orderNoCounter ?? this.orderNoCounter,
       botList: botList ?? this.botList,
-      vipOrderList: vipOrderList ?? this.vipOrderList,
-      normalOrderList: normalOrderList ?? this.normalOrderList,
+      pendingOrderList: pendingOrderList ?? this.pendingOrderList,
       completeOrderList: completeOrderList ?? this.completeOrderList,
     );
   }
@@ -41,8 +37,7 @@ class OrderSystemState extends Equatable {
       botNoCounter,
       orderNoCounter,
       botList,
-      vipOrderList,
-      normalOrderList,
+      pendingOrderList,
       completeOrderList,
     ];
   }

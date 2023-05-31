@@ -7,11 +7,9 @@ class Order {
   final int orderNo;
   final bool isVip;
   int status = 0;
-  int progress = 0;
 
   void setStatusPending() {
     status = 0;
-    progress = 0;
   }
 
   void setStatusProcessing() {

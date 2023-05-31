@@ -1,6 +1,9 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:se_take_home_assignment/bloc/order_system_bloc.dart';
+import 'package:se_take_home_assignment/widget/bot_item_widget.dart';
+import 'package:se_take_home_assignment/widget/order_item_widget.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,7 +12,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -30,6 +32,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final OrderSystemBloc orderSystemBloc = OrderSystemBloc();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,25 +44,30 @@ class _MyHomePageState extends State<MyHomePage> {
         width: double.maxFinite,
         height: double.maxFinite,
         child: BlocBuilder<OrderSystemBloc, OrderSystemState>(
+          bloc: orderSystemBloc,
           builder: (context, state) {
             final botList = state.botList;
-            final vipOrderList = state.vipOrderList;
-            final normalOrderList = state.normalOrderList;
+            final vipOrderList = state.pendingOrderList;
             final completeOrderList = state.completeOrderList;
 
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          orderSystemBloc.add(RemoveBotEvent());
+                        },
                         child: const Text("- Bot"),
                       ),
                       12.pw,
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          orderSystemBloc.add(AddBotEvent());
+                        },
                         child: const Text("+ Bot"),
                       ),
                     ],
@@ -70,37 +79,63 @@ class _MyHomePageState extends State<MyHomePage> {
                     scrollDirection: Axis.horizontal,
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Row(
-                      children: [],
+                      children: [
+                        ...botList.mapIndexed(
+                          (index, item) {
+                            return Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: BotItemWidget(
+                                bot: item,
+                                onCompleteOrder: () {
+                                  orderSystemBloc.add(BotCompleteOrderEvent(currentBot: item));
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   24.ph,
-                  const Text("VIP Order"),
+                  const Text("PENDING"),
                   4.ph,
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Row(
-                      children: [],
+                      children: [
+                        ...vipOrderList.mapIndexed(
+                          (index, item) {
+                            return Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: OrderItemWidget(
+                                order: item,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   12.ph,
-                  const Text("Normal Order"),
+                  const Text("COMPLETE"),
                   4.ph,
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Row(
-                      children: [],
-                    ),
-                  ),
-                  12.ph,
-                  const Text("Completed Order"),
-                  4.ph,
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: Row(
-                      children: [],
+                      children: [
+                        ...completeOrderList.mapIndexed(
+                          (index, item) {
+                            return Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: OrderItemWidget(
+                                order: item,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                   12.ph,
@@ -109,12 +144,16 @@ class _MyHomePageState extends State<MyHomePage> {
                   Row(
                     children: [
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          orderSystemBloc.add(AddVipOrderEvent());
+                        },
                         child: const Text("Add VIP Order"),
                       ),
                       12.pw,
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          orderSystemBloc.add(AddNormalOrderEvent());
+                        },
                         child: const Text("Add Normal Order"),
                       ),
                     ],
